@@ -23,6 +23,7 @@ import (
 )
 
 var (
+	ErrCantStartAlreadyRunning           = errors.New("can't stop validator, not started")
 	ErrCantStopNonStartedValidator       = errors.New("can't stop validator, not started")
 	ErrCantVoteNotValidating             = errors.New("can't vote, not validating")
 	ErrCantSetCoinbaseOnStartedValidator = errors.New("can't set coinbase, already started validating")
@@ -39,7 +40,7 @@ type Backend interface {
 }
 
 type Validator interface {
-	Start(coinbase common.Address, deposit uint64)
+	Start() error
 	Stop() error
 	SetExtra(extra []byte) error
 	Validating() bool
@@ -117,28 +118,26 @@ func (val *validator) finishedSync() {
 	atomic.StoreInt32(&val.canStart, 1)
 	atomic.StoreInt32(&val.shouldStart, 0)
 	if start {
-		val.Start(val.walletAccount.Account().Address, val.deposit)
+		val.Start()
 	}
 }
 
-func (val *validator) Start(coinbase common.Address, deposit uint64) {
+func (val *validator) Start() error {
 	if val.Validating() {
 		log.Warn("Failed to start the validator - the state machine is already running")
-		return
+		return ErrCantStartAlreadyRunning
 	}
 
 	atomic.StoreInt32(&val.shouldStart, 1)
 
-	newWalletAccount, _ := accounts.NewWalletAccount(val.walletAccount, accounts.Account{Address: coinbase})
-	val.walletAccount = newWalletAccount
-	val.deposit = deposit
-
 	if atomic.LoadInt32(&val.canStart) == 0 {
 		log.Info("Network syncing, will start validator afterwards")
-		return
+		return nil
 	}
 
 	go val.run()
+
+	return nil
 }
 
 func (val *validator) run() {

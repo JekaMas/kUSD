@@ -158,6 +158,11 @@ func New(ctx *node.ServiceContext, config *Config) (*Kowala, error) {
 }
 
 func getWalletAccount(accountManager *accounts.Manager, address common.Address) (accounts.WalletAccount, error) {
+	noAddress := common.Address{}
+	if address == noAddress {
+		return accounts.NewNoWalletAccount()
+	}
+
 	account := accounts.Account{Address: address}
 	wallet, err := accountManager.Find(account)
 	if err != nil {
@@ -351,7 +356,9 @@ func (s *Kowala) StartValidating() error {
 	// @TODO (rgeraldes) - review (does it make sense to have a list of transactions before the election or not)
 	atomic.StoreUint32(&s.protocolManager.acceptTxs, 1)
 
-	go s.validator.Start(cb, dep)
+	s.validator.SetCoinbase(cb)
+	s.validator.SetDeposit(dep)
+	go s.validator.Start()
 	return nil
 }
 

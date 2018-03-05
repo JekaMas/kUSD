@@ -12,7 +12,12 @@ type walletAccount struct {
 }
 
 // NewWalletAccount ensure that the address provided exists in the wallet
-func NewWalletAccount(wallet Wallet, account Account) (*walletAccount, error) {
+func NewWalletAccount(wallet Wallet, account Account) (WalletAccount, error) {
+	emptyAccount := Account{}
+	if account == emptyAccount {
+		return NewNoWalletAccount(wallet), nil
+	}
+
 	if !wallet.Contains(account) {
 		return nil, NewErrInvalidAccountAddress(account)
 	}

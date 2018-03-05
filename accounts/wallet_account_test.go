@@ -6,16 +6,28 @@ import (
 	"testing"
 )
 
+func TestNewWalletAccountWithoutAccountReturnsNoWalletAccount(t *testing.T) {
+	address := common.Address{}
+	account := Account{Address: address}
+	wallet := &MockWallet{}
+
+	walletAccount, err := NewWalletAccount(wallet, account)
+	assert.NoError(t, err)
+
+	assert.IsType(t, &noWalletAccount{}, walletAccount)
+}
+
 func TestNewWalletAccount(t *testing.T) {
 	address := common.Address{1}
 	account := Account{Address: address}
 	wallet := &MockWallet{}
 	wallet.On("Contains", account).Return(true)
 
-	walletAccount, err := NewWalletAccount(wallet, account)
+	walletAccountInstance, err := NewWalletAccount(wallet, account)
 	assert.NoError(t, err)
 
-	assert.Equal(t, account, walletAccount.account)
+	assert.IsType(t, &walletAccount{}, walletAccountInstance)
+	assert.Equal(t, account, walletAccountInstance.Account())
 }
 
 func TestNewWalletAccountFailsIfAddressDoesntExistInWallet(t *testing.T) {
