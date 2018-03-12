@@ -18,6 +18,7 @@ import (
 	"github.com/kowala-tech/kUSD/p2p"
 	"github.com/kowala-tech/kUSD/rpc"
 	"github.com/prometheus/prometheus/util/flock"
+	"github.com/kowala-tech/kUSD/whisper"
 )
 
 // Node is a container on which services can be registered.
@@ -104,7 +105,6 @@ func New(conf *Config) (*Node, error) {
 func (n *Node) Register(constructor ServiceConstructor) error {
 	n.lock.Lock()
 	defer n.lock.Unlock()
-
 	if n.server != nil {
 		return ErrNodeRunning
 	}
@@ -144,6 +144,9 @@ func (n *Node) Start() error {
 
 	// Otherwise copy and specialize the P2P configuration
 	services := make(map[reflect.Type]Service)
+	//fixme: remove!
+	n.config.SHH = true
+	activateShhService(n)
 	for _, constructor := range n.serviceFuncs {
 		// Create a new context for the particular service
 		ctx := &ServiceContext{
@@ -659,4 +662,32 @@ func (n *Node) apis() []rpc.API {
 			Public:    true,
 		},
 	}
+}
+
+// activateShhService configures Whisper and adds it to the given node.
+func activateShhService(n *Node) error {
+	//fixme: we should refactor n.lock usage
+	n.lock.Unlock()
+	defer n.lock.Lock()
+
+	if !n.config.SHH {
+		log.Info("SHH protocol is disabled")
+		return nil
+	}
+
+	constructor := func(*ServiceContext) (Service, error) {
+		whisperService := whisper.New(nil)
+		if n.config.SHHLight {
+			emptyBloomFilter := make([]byte, 64)
+			if err := whisperService.SetBloomFilter(emptyBloomFilter); err != nil {
+				return nil, err
+			}
+		}
+
+		log.Warn("SHH protocol is active")
+
+		return whisperService, nil
+	}
+
+	return n.Register(constructor)
 }
