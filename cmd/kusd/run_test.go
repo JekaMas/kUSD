@@ -72,7 +72,7 @@ func runKusd(t *testing.T, args ...string) *testKusd {
 			if i < len(args)-1 {
 				tt.Datadir = args[i+1]
 			}
-		case arg == "-etherbase" || arg == "--etherbase":
+		case arg == "-coinbase" || arg == "--coinbase":
 			if i < len(args)-1 {
 				tt.Etherbase = args[i+1]
 			}

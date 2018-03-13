@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	ipcAPIs  = "admin:1.0 debug:1.0 eth:1.0 miner:1.0 net:1.0 personal:1.0 rpc:1.0 shh:1.0 txpool:1.0 web3:1.0"
+	ipcAPIs  = "admin:1.0 debug:1.0 eth:1.0 net:1.0 personal:1.0 rpc:1.0 shh:1.0 txpool:1.0 validator:1.0 web3:1.0"
 	httpAPIs = "eth:1.0 net:1.0 rpc:1.0 web3:1.0"
 )
 
@@ -138,7 +138,7 @@ func TestSHHAttachWelcome(t *testing.T) {
 	// Note: we need --shh because testAttachWelcome checks for default
 	// list of ipc modules and shh is included there.
 	kusd := runKusd(t,
-		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--port", "0", "--nodiscover", "--nat", "none",
 		"--coinbase", coinbase, "--shh", "--ipcpath", ipc)
 
 	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
@@ -152,9 +152,62 @@ func testAttachSHH(t *testing.T, kusd *testKusd, endpoint, apis string) {
 	// Attach to a running kusd note and terminate immediately
 	attach := runKusd(t, "attach", endpoint)
 	defer attach.ExpectExit()
+	attach.InputLine("shh")
 	attach.CloseStdin()
 
-	attach.InputLine("shh.newKeyPair()")
+	// Gather all the infos the welcome message needs to contain
+	attach.SetTemplateFunc("goos", func() string { return runtime.GOOS })
+	attach.SetTemplateFunc("goarch", func() string { return runtime.GOARCH })
+	attach.SetTemplateFunc("gover", runtime.Version)
+	attach.SetTemplateFunc("kusdver", func() string { return params.Version })
+	attach.SetTemplateFunc("coinbase", func() string { return kusd.Etherbase })
+	attach.SetTemplateFunc("niltime", func() string { return time.Unix(0, 0).Format(time.RFC1123) })
+	attach.SetTemplateFunc("ipc", func() bool { return strings.HasPrefix(endpoint, "ipc") })
+	attach.SetTemplateFunc("datadir", func() string { return kusd.Datadir })
+	attach.SetTemplateFunc("apis", func() string { return apis })
+
+	// Verify the actual welcome message to the required template
+	attach.Expect(`
+Welcome to the kUSD JavaScript console!
+
+instance: Kusd/v{{kusdver}}/{{goos}}-{{goarch}}/{{gover}}
+coinbase: {{coinbase}}
+at block: 0 ({{niltime}}){{if ipc}}
+ datadir: {{datadir}}{{end}}
+ modules: {{apis}}
+
+> 
+{
+  info: {
+    maxMessageSize: 1048576,
+    memory: 0,
+    messages: 0,
+    minPow: 0.2
+  },
+  version: 6,
+  addPrivateKey: function(),
+  addSymKey: function(),
+  deleteKeyPair: function(),
+  deleteSymKey: function(),
+  generateSymKeyFromPassword: function(),
+  getInfo: function(callback),
+  getPrivateKey: function(),
+  getPublicKey: function(),
+  getSymKey: function(),
+  getVersion: function(callback),
+  hasKeyPair: function(),
+  hasSymKey: function(),
+  markTrustedPeer: function(),
+  newKeyPair: function(),
+  newMessageFilter: function(options, callback, filterCreationErrorCallback),
+  newSymKey: function(),
+  post: function(),
+  setMaxMessageSize: function(),
+  setMinPoW: function()
+}
+> {{.InputLine "exit" }}
+`)
+
 	attach.ExpectExit()
 }
 
