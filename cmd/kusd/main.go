@@ -91,6 +91,8 @@ var (
 		utils.MetricsPrometheusAddressFlag,
 		utils.MetricsPrometheusSubsystemFlag,
 		utils.NoCompactionFlag,
+		utils.SHHFlag,
+		utils.SHHLightFlag,
 		utils.GpoBlocksFlag,
 		utils.GpoPercentileFlag,
 		utils.ExtraDataFlag,

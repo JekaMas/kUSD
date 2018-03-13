@@ -314,6 +314,15 @@ var (
 		Name:  "nocompaction",
 		Usage: "Disables db compaction after import",
 	}
+	// Services settings
+	SHHFlag = cli.BoolFlag{
+		Name:  "shh",
+		Usage: "Enable whisper service",
+	}
+	SHHLightFlag = cli.BoolFlag{
+		Name:  "shh-light",
+		Usage: "Enable light whisper service",
+	}
 	// RPC settings
 	RPCEnabledFlag = cli.BoolFlag{
 		Name:  "rpc",

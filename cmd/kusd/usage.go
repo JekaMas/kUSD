@@ -63,6 +63,8 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.LightServFlag,
 			utils.LightPeersFlag,
 			utils.LightKDFFlag,
+			utils.SHHFlag,
+			utils.SHHLightFlag,
 		},
 	},
 	//{

@@ -43,7 +43,7 @@ func TestConsoleWelcome(t *testing.T) {
 	// Start a kusd console, make sure it's cleaned up and terminate the console
 	kusd := runKusd(t,
 		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--etherbase", coinbase, "--shh",
+		"--coinbase", coinbase, "--shh",
 		"console")
 
 	// Gather all the infos the welcome message needs to contain
@@ -85,7 +85,7 @@ func TestIPCAttachWelcome(t *testing.T) {
 	// list of ipc modules and shh is included there.
 	kusd := runKusd(t,
 		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--etherbase", coinbase, "--shh", "--ipcpath", ipc)
+		"--coinbase", coinbase, "--shh", "--ipcpath", ipc)
 
 	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
 	testAttachWelcome(t, kusd, "ipc:"+ipc, ipcAPIs)
@@ -99,7 +99,7 @@ func TestHTTPAttachWelcome(t *testing.T) {
 	port := strconv.Itoa(trulyRandInt(1024, 65536)) // Yeah, sometimes this will fail, sorry :P
 	kusd := runKusd(t,
 		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--etherbase", coinbase, "--rpc", "--rpcport", port)
+		"--coinbase", coinbase, "--rpc", "--rpcport", port)
 
 	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
 	testAttachWelcome(t, kusd, "http://localhost:"+port, httpAPIs)
@@ -114,13 +114,48 @@ func TestWSAttachWelcome(t *testing.T) {
 
 	kusd := runKusd(t,
 		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--etherbase", coinbase, "--ws", "--wsport", port)
+		"--coinbase", coinbase, "--ws", "--wsport", port)
 
 	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
 	testAttachWelcome(t, kusd, "ws://localhost:"+port, httpAPIs)
 
 	kusd.Interrupt()
 	kusd.ExpectExit()
+}
+
+// Tests that a console can be attached to a running node via various means.
+func TestSHHAttachWelcome(t *testing.T) {
+	// Configure the instance for IPC attachement
+	coinbase := "0x8605cdbbdb6d264aa742e77020dcbc58fcdce182"
+	var ipc string
+	if runtime.GOOS == "windows" {
+		ipc = `\\.\pipe\kusd` + strconv.Itoa(trulyRandInt(100000, 999999))
+	} else {
+		ws := tmpdir(t)
+		defer os.RemoveAll(ws)
+		ipc = filepath.Join(ws, "kusd.ipc")
+	}
+	// Note: we need --shh because testAttachWelcome checks for default
+	// list of ipc modules and shh is included there.
+	kusd := runKusd(t,
+		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--coinbase", coinbase, "--shh", "--ipcpath", ipc)
+
+	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
+	testAttachSHH(t, kusd, "ipc:"+ipc, ipcAPIs)
+
+	kusd.Interrupt()
+	kusd.ExpectExit()
+}
+
+func testAttachSHH(t *testing.T, kusd *testKusd, endpoint, apis string) {
+	// Attach to a running kusd note and terminate immediately
+	attach := runKusd(t, "attach", endpoint)
+	defer attach.ExpectExit()
+	attach.CloseStdin()
+
+	attach.InputLine("shh.newKeyPair()")
+	attach.ExpectExit()
 }
 
 func testAttachWelcome(t *testing.T, kusd *testKusd, endpoint, apis string) {
@@ -134,7 +169,7 @@ func testAttachWelcome(t *testing.T, kusd *testKusd, endpoint, apis string) {
 	attach.SetTemplateFunc("goarch", func() string { return runtime.GOARCH })
 	attach.SetTemplateFunc("gover", runtime.Version)
 	attach.SetTemplateFunc("kusdver", func() string { return params.Version })
-	attach.SetTemplateFunc("etherbase", func() string { return kusd.Etherbase })
+	attach.SetTemplateFunc("coinbase", func() string { return kusd.Etherbase })
 	attach.SetTemplateFunc("niltime", func() string { return time.Unix(0, 0).Format(time.RFC1123) })
 	attach.SetTemplateFunc("ipc", func() bool { return strings.HasPrefix(endpoint, "ipc") })
 	attach.SetTemplateFunc("datadir", func() string { return kusd.Datadir })
@@ -145,7 +180,7 @@ func testAttachWelcome(t *testing.T, kusd *testKusd, endpoint, apis string) {
 Welcome to the kUSD JavaScript console!
 
 instance: Kusd/v{{kusdver}}/{{goos}}-{{goarch}}/{{gover}}
-coinbase: {{etherbase}}
+coinbase: {{coinbase}}
 at block: 0 ({{niltime}}){{if ipc}}
  datadir: {{datadir}}{{end}}
  modules: {{apis}}

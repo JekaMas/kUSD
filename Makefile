@@ -62,6 +62,9 @@ devtools:
 	env GOBIN= go get -u github.com/fjl/gencodec
 	env GOBIN= go install ./cmd/abigen
 
+generate:
+	go generate ./internal/jsre/deps
+
 # Cross Compilation Targets (xgo)
 
 kusd-cross: kusd-linux kusd-darwin kusd-windows kusd-android kusd-ios
