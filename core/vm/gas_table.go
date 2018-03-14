@@ -323,7 +323,7 @@ func gasCall(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem
 		address        = common.BigToAddress(stack.Back(1))
 	)
 
-	if transfersValue && evm.StateDB.Empty(address)  {
+	if transfersValue && evm.StateDB.Empty(address) {
 		gas += params.CallNewAccountGas
 	}
 

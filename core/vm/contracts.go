@@ -36,6 +36,7 @@ type PrecompiledContract interface {
 	RequiredGas(input []byte) uint64  // RequiredPrice calculates the contract gas use
 	Run(input []byte) ([]byte, error) // Run runs the precompiled contract
 }
+
 // PrecompiledContractsAndromeda contains the default set of pre-compiled Kowala
 // contracts used in the Andromeda release.
 var PrecompiledContractsAndromeda = map[common.Address]PrecompiledContract{

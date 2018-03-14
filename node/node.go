@@ -17,8 +17,8 @@ import (
 	"github.com/kowala-tech/kUSD/log"
 	"github.com/kowala-tech/kUSD/p2p"
 	"github.com/kowala-tech/kUSD/rpc"
-	"github.com/prometheus/prometheus/util/flock"
 	"github.com/kowala-tech/kUSD/whisper"
+	"github.com/prometheus/prometheus/util/flock"
 )
 
 // Node is a container on which services can be registered.
@@ -35,6 +35,8 @@ type Node struct {
 
 	serviceFuncs []ServiceConstructor     // Service constructors (in dependency order)
 	services     map[reflect.Type]Service // Currently running services
+
+	shh *whisper.Whisper // Currently running Whisper service
 
 	rpcAPIs       []rpc.API   // List of APIs currently provided by the node
 	inprocHandler *rpc.Server // In-process RPC request handler to process the API requests
@@ -664,6 +666,14 @@ func (n *Node) apis() []rpc.API {
 	}
 }
 
+// Service retrieves a currently running service registered of a specific type.
+func (n *Node) Shh() *whisper.Whisper {
+	n.lock.RLock()
+	defer n.lock.RUnlock()
+
+	return n.shh
+}
+
 // activateShhService configures Whisper and adds it to the given node.
 func activateShhService(n *Node) error {
 	//fixme: we should refactor n.lock usage
@@ -683,6 +693,8 @@ func activateShhService(n *Node) error {
 				return nil, err
 			}
 		}
+
+		n.shh = whisperService
 
 		log.Warn("SHH protocol is active")
 

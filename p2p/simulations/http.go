@@ -28,12 +28,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/julienschmidt/httprouter"
 	"github.com/kowala-tech/kUSD/event"
 	"github.com/kowala-tech/kUSD/p2p"
 	"github.com/kowala-tech/kUSD/p2p/discover"
 	"github.com/kowala-tech/kUSD/p2p/simulations/adapters"
 	"github.com/kowala-tech/kUSD/rpc"
-	"github.com/julienschmidt/httprouter"
 	"golang.org/x/net/websocket"
 )
 

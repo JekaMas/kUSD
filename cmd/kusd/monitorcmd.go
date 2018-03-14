@@ -25,10 +25,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gizak/termui"
 	"github.com/kowala-tech/kUSD/cmd/utils"
 	"github.com/kowala-tech/kUSD/node"
 	"github.com/kowala-tech/kUSD/rpc"
-	"github.com/gizak/termui"
 	"gopkg.in/urfave/cli.v1"
 )
 

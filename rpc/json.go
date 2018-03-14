@@ -87,18 +87,6 @@ func NewJSONCodec(rwc io.ReadWriteCloser) ServerCodec {
 	return &jsonCodec{closed: make(chan interface{}), d: d, e: json.NewEncoder(rwc), rw: rwc}
 }
 
-// isBatch returns true when the first non-whitespace characters is '['
-func isBatch(msg json.RawMessage) bool {
-	for _, c := range msg {
-		// skip insignificant whitespace (http://www.ietf.org/rfc/rfc4627.txt)
-		if c == 0x20 || c == 0x09 || c == 0x0a || c == 0x0d {
-			continue
-		}
-		return c == '['
-	}
-	return false
-}
-
 // ReadRequestHeaders will read new requests without parsing the arguments. It will
 // return a collection of requests, an indication if these requests are in batch
 // form or an error when the incoming message could not be read/parsed.
