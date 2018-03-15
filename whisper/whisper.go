@@ -737,6 +737,18 @@ func (whisper *Whisper) runMessageLoop(p *Peer, rw p2p.MsgReadWriter) error {
 				return errors.New("invalid bloom filter exchange message")
 			}
 			p.setBloomFilter(bloom)
+		case hashesCode:
+			var hashes []common.Hash
+
+			err := packet.Decode(&hashes)
+			log.Info("message loop", "hashes", hashes, "err", err, "size", packet.Size)
+			if err != nil {
+				return errors.New("invalid hashes")
+			}
+
+			for _, hash := range hashes {
+				p.known.Add(hash)
+			}
 		case p2pMessageCode:
 			// peer-to-peer message, sent directly to peer bypassing PoW checks, etc.
 			// this message is not supposed to be forwarded to other peers, and

@@ -26,7 +26,7 @@ import (
 	"github.com/kowala-tech/kUSD/log"
 	"github.com/kowala-tech/kUSD/p2p"
 	"github.com/kowala-tech/kUSD/rlp"
-	set "gopkg.in/fatih/set.v0"
+	"gopkg.in/fatih/set.v0"
 )
 
 // Peer represents a whisper protocol peer connection.
@@ -41,7 +41,10 @@ type Peer struct {
 	bloomFilter    []byte
 	fullNode       bool
 
-	known *set.Set // Messages already known by the peer to avoid wasting bandwidth
+	known      *set.Set // Messages already known by the peer to avoid wasting bandwidth
+	advertised *set.Set
+
+	hashes     chan common.Hash
 
 	quit chan struct{}
 }
@@ -55,7 +58,9 @@ func newPeer(host *Whisper, remote *p2p.Peer, rw p2p.MsgReadWriter) *Peer {
 		trusted:        false,
 		powRequirement: 0.0,
 		known:          set.New(),
+		advertised:     set.New(),
 		quit:           make(chan struct{}),
+		hashes:         make(chan common.Hash, 20),
 		bloomFilter:    MakeFullNodeBloom(),
 		fullNode:       true,
 	}
@@ -133,26 +138,48 @@ func (peer *Peer) handshake() error {
 	return nil
 }
 
+
 // update executes periodic operations on the peer, including message transmission
 // and expiration.
-func (peer *Peer) update() {
+func (p *Peer) update() {
 	// Start the tickers for the updates
 	expire := time.NewTicker(expirationCycle)
 	transmit := time.NewTicker(transmissionCycle)
+
+	hashesTransmit := time.NewTicker(50 * time.Millisecond)
+	const hashesCount = 10
+	hashes := make([]common.Hash, 0, hashesCount)
 
 	// Loop and transmit until termination is requested
 	for {
 		select {
 		case <-expire.C:
-			peer.expire()
-
+			p.expire()
 		case <-transmit.C:
-			if err := peer.broadcast(); err != nil {
-				log.Trace("broadcast failed", "reason", err, "peer", peer.ID())
+			if err := p.broadcast(); err != nil {
+				log.Trace("broadcast failed", "reason", err, "peer", p.ID())
 				return
 			}
+		case <-hashesTransmit.C:
+			if err := p.broadcastHashes(hashes); err != nil {
+				log.Trace("broadcast of hashes failed", err, "peer", p.ID)
+				return
+			}
+			hashes = make([]common.Hash, 0, hashesCount)
+		case hash := <-p.hashes:
+			if p.known.Has(hash) || p.advertised.Has(hash) {
+				continue
+			}
 
-		case <-peer.quit:
+			hashes = append(hashes, hash)
+			if len(hashes) == hashesCount {
+				if err := p.broadcastHashes(hashes); err != nil {
+					log.Trace("broadcast of hashes failed", err, "peer", p.ID)
+					return
+				}
+				hashes = make([]common.Hash, 0, hashesCount)
+			}
+		case <-p.quit:
 			return
 		}
 	}
@@ -248,4 +275,20 @@ func MakeFullNodeBloom() []byte {
 		bloom[i] = 0xFF
 	}
 	return bloom
+}
+
+func (p *Peer) broadcastHashes(hashes []common.Hash) error {
+	if len(hashes) == 0 {
+		return nil
+	}
+
+	if err := p2p.Send(p.ws, hashesCode, hashes); err != nil {
+		return err
+	}
+
+	for _, hash := range hashes {
+		p.advertised.Add(hash)
+	}
+
+	return nil
 }

@@ -47,6 +47,7 @@ const (
 	messagesCode         = 1   // normal whisper message
 	powRequirementCode   = 2   // PoW requirement
 	bloomFilterExCode    = 3   // bloom filter exchange
+	hashesCode           = 4 // code used to populate known hashes of the peer
 	p2pRequestCode       = 126 // peer-to-peer message, used by Dapp protocol
 	p2pMessageCode       = 127 // peer-to-peer message (to be consumed by the peer, but not forwarded any further)
 	NumberOfMessageCodes = 128
