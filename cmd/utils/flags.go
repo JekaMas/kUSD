@@ -722,6 +722,15 @@ func setDeposit(ctx *cli.Context, cfg *kusd.Config) {
 	}
 }
 
+func setShh(ctx *cli.Context, cfg *node.Config) {
+	if ctx.GlobalIsSet(SHHFlag.Name) {
+		cfg.SHH = ctx.GlobalBool(SHHFlag.Name)
+	}
+	if ctx.GlobalIsSet(SHHLightFlag.Name) {
+		cfg.SHHLight = ctx.GlobalBool(SHHLightFlag.Name)
+	}
+}
+
 // MakePasswordList reads password lines from the file specified by the global --password flag.
 func MakePasswordList(ctx *cli.Context) []string {
 	path := ctx.GlobalString(PasswordFileFlag.Name)
@@ -793,6 +802,7 @@ func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
 	setHTTP(ctx, cfg)
 	setWS(ctx, cfg)
 	setNodeUserIdent(ctx, cfg)
+	setShh(ctx, cfg)
 
 	switch {
 	case ctx.GlobalIsSet(DataDirFlag.Name):
