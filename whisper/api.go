@@ -44,6 +44,9 @@ var (
 	ErrInvalidSigningPubKey = errors.New("invalid signing public key")
 	ErrTooLowPoW            = errors.New("message rejected, PoW too low")
 	ErrNoTopics             = errors.New("missing topic(s)")
+
+	ErrNoPeers     = errors.New("a node should be connected with 1 or more nodes")
+	ErrNoFullPeers = errors.New("a light node should be connected with 1 or more full nodes")
 )
 
 // PublicWhisperAPI provides the whisper RPC service that can be
@@ -306,7 +309,11 @@ func (api *PublicWhisperAPI) Post(ctx context.Context, req NewMessage) (bool, er
 		return false, ErrTooLowPoW
 	}
 
-	return true, api.w.Send(env)
+	if err = api.w.Send(env); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 //go:generate gencodec -type Criteria -field-override criteriaOverride -out gen_criteria_json.go

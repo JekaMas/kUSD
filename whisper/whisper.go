@@ -36,6 +36,7 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/sync/syncmap"
 	set "gopkg.in/fatih/set.v0"
+	"sync/atomic"
 )
 
 // Statistics holds several message-related counter for analytics
@@ -46,6 +47,7 @@ type Statistics struct {
 	memoryUsed           int
 	cycles               int
 	totalMessagesCleared int
+	peers				 int
 }
 
 const (
@@ -83,6 +85,8 @@ type Whisper struct {
 	syncAllowance int // maximum time in seconds allowed to process the whisper-related messages
 
 	lightClient bool // indicates is this node is pure light client (does not forward any messages)
+	withBloomFilter	bool
+	fullPeers	uint32 // counts all full whisper peers connected with
 
 	statsMu sync.Mutex // guard stats
 	stats   Statistics // Statistics of whisper node
@@ -314,6 +318,13 @@ func (whisper *Whisper) getPeers() []*Peer {
 	}
 	whisper.peerMu.Unlock()
 	return arr
+}
+
+func (whisper *Whisper) peersCount() int {
+	whisper.peerMu.Lock()
+	defer whisper.peerMu.Unlock()
+
+	return len(whisper.peers)
 }
 
 // getPeer retrieves peer by ID
@@ -589,6 +600,14 @@ func (whisper *Whisper) Unsubscribe(id string) error {
 // Send injects a message into the whisper send queue, to be distributed in the
 // network in the coming cycles.
 func (whisper *Whisper) Send(envelope *Envelope) error {
+	if whisper.peersCount() == 0 {
+		return ErrNoPeers
+	}
+
+	if !isFullNode(whisper.BloomFilter()) && atomic.LoadUint32(&whisper.fullPeers) == 0 {
+		return ErrNoFullPeers
+	}
+
 	ok, err := whisper.add(envelope, false)
 	if err == nil && !ok {
 		return fmt.Errorf("failed to add envelope")
@@ -632,6 +651,10 @@ func (whisper *Whisper) HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 		whisper.peerMu.Lock()
 		delete(whisper.peers, whisperPeer)
 		whisper.peerMu.Unlock()
+
+		if whisperPeer.fullNode {
+			atomic.AddUint32(&whisper.fullPeers, ^uint32(0))
+		}
 	}()
 
 	// Run the peer handshake and state updates
@@ -640,6 +663,10 @@ func (whisper *Whisper) HandlePeer(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 	}
 	whisperPeer.start()
 	defer whisperPeer.stop()
+
+	if whisperPeer.fullNode {
+		atomic.AddUint32(&whisper.fullPeers, 1)
+	}
 
 	return whisper.runMessageLoop(whisperPeer, rw)
 }
@@ -912,6 +939,11 @@ func (whisper *Whisper) expire() {
 func (whisper *Whisper) Stats() Statistics {
 	whisper.statsMu.Lock()
 	defer whisper.statsMu.Unlock()
+
+	whisper.peerMu.RLock()
+	defer whisper.peerMu.RUnlock()
+
+	whisper.stats.peers = len(whisper.peers)
 
 	return whisper.stats
 }

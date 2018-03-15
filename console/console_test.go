@@ -78,9 +78,8 @@ func newTester(t *testing.T, confOverride func(*kusd.Config)) *tester {
 		t.Fatalf("failed to create node: %v", err)
 	}
 	kusdConf := &kusd.Config{
-		Genesis:  core.DeveloperGenesisBlock(15, common.Address{}),
+		Genesis:  core.DevGenesisBlock(),
 		Coinbase: common.HexToAddress(testAddress),
-		PowTest:  true,
 	}
 	if confOverride != nil {
 		confOverride(kusdConf)
