@@ -217,6 +217,12 @@ func (peer *Peer) broadcast() error {
 	envelopes := peer.host.Envelopes()
 	bundle := make([]*Envelope, 0, len(envelopes))
 	for _, envelope := range envelopes {
+		if !envelope.self && !isFullNode(peer.host.BloomFilter()) {
+			//light mode
+			peer.mark(envelope)
+			continue
+		}
+
 		if !peer.marked(envelope) && envelope.PoW() >= peer.powRequirement && peer.bloomMatch(envelope) {
 			bundle = append(bundle, envelope)
 		}

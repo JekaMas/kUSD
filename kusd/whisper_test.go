@@ -179,7 +179,7 @@ func TestSendMessageWithLightNodes_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(messages) != 1 {
-		t.Fatal("filter should received 1 message")
+		t.Fatalf("filter should received 1 message. got %d", len(messages))
 	}
 
 	if messages[0]["payload"].(string) != messageText {

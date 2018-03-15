@@ -46,6 +46,7 @@ type Envelope struct {
 
 	// the following variables should not be accessed directly, use the corresponding function instead: Hash(), Bloom()
 	hash  common.Hash // Cached hash of the envelope to avoid rehashing every time.
+	self  bool
 	bloom []byte
 }
 
